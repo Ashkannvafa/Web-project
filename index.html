@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Royalty Splitter</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>Royalty Splitter</h1>
+        <div class="muted">Quickly split revenue between collaborators. Works offline.</div>
+      </div>
+      <label class="theme-toggle">
+        <input type="checkbox" id="themeToggle">
+        <span class="switch-slider"></span>
+      </label>
+    </header>
+
+    <section class="card" aria-labelledby="splitSection">
+      <div class="controls">
+        <div style="min-width:220px">
+          <label for="total">Total revenue (e.g. 1234.56)</label>
+          <input id="total" type="number" step="0.01" placeholder="0.00" value="0">
+        </div>
+
+        <div>
+          <label for="currency">Currency</label>
+          <select id="currency" aria-label="Currency">
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="AZN">AZN (₼)</option>
+            <option value="GBP">GBP (£)</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div style="min-width:180px">
+          <label for="mode">Split mode</label>
+          <select id="mode">
+            <option value="percent">By percent</option>
+            <option value="shares">By shares (counts)</option>
+            <option value="equal">Equal split</option>
+          </select>
+        </div>
+
+        <div style="min-width:160px">
+          <label for="rounding">Rounding</label>
+          <select id="rounding">
+            <option value="2">2 decimal places</option>
+            <option value="0">Whole units</option>
+            <option value="3">3 decimal places</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="add-collab">
+        <input id="newName" type="text" placeholder="Name or role" aria-label="Collaborator name">
+        <input id="newValue" type="number" step="0.01" placeholder="%, shares or blank">
+        <button id="addBtn">Add</button>
+      </div>
+      <div class="muted">When using 'By percent', enter percentages that sum to 100. With 'shares' enter integer share counts. Leave value blank to auto-distribute.</div>
+
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+        <button id="calc">Calculate</button>
+        <button id="save" class="ghost">Save</button>
+        <button id="load" class="ghost">Load</button>
+      </div>
+
+      <div class="payees" id="payeeList" aria-live="polite" style="margin-top:12px"></div>
+
+      <div class="summary">
+        <div class="left">
+          <div>
+            <div class="muted">Total</div>
+            <div id="totalDisplay" style="font-weight:800;font-size:18px">0.00</div>
+          </div>
+          <div style="width:18px"></div>
+          <div>
+            <div class="muted">Remaining (if any)</div>
+            <div id="remaining" class="muted">0.00</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px">
+          <button id="exportCsv" class="ghost">Export CSV</button>
+          <button id="copy" class="ghost">Copy results</button>
+          <button id="reset" class="danger">Reset</button>
+        </div>
+      </div>
+
+      <div class="result-table" id="resultsWrap">
+        <table aria-describedby="splitSection">
+          <thead>
+            <tr><th>Collaborator</th><th>Share</th><th>Amount</th><th></th></tr>
+          </thead>
+          <tbody id="results"></tbody>
+          <tfoot><tr><td>Total</td><td id="sumShare">—</td><td id="sumAmount">0.00</td><td></td></tr></tfoot>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
