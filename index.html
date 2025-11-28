@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Royalty Splitter</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="app.js" defer></script>
+</head>
+<body class="theme theme--dark">
+  <div id="app" class="app" :class="`theme--${theme}`" v-cloak>
+    <header class="app__header">
+      <div>
+        <p class="app__eyebrow" data-i18n="eyebrow">Royalty Manager</p>
+        <h1 class="app__title" data-i18n="title">Royalty Split Calculator</h1>
+        <p class="app__subtitle" data-i18n="subtitle">
+          Configure collaborators and visualize precise royalty allocations.
+        </p>
+      </div>
+      <div class="app__header-utils">
+        <div class="utility-group">
+          <div class="lang-toggle" v-click-outside="closeLangDropdown">
+            <button
+              class="btn btn--ghost btn--util"
+              type="button"
+              @click="toggleLangDropdown"
+              :aria-expanded="showLangDropdown"
+              aria-haspopup="true"
+              :aria-label="currentTranslations.selectLanguage"
+            >
+              <span class="btn--util__text">{{ currentLanguage }}</span>
+            </button>
+            <div
+              v-if="showLangDropdown"
+              class="lang-dropdown"
+              role="menu"
+            >
+              <button
+                v-for="lang in languages"
+                :key="lang.code"
+                class="lang-dropdown__item"
+                :class="{ 'lang-dropdown__item--active': lang.code === currentLanguage }"
+                type="button"
+                @click="selectLanguage(lang.code)"
+                role="menuitem"
+              >
+                {{ lang.name }} ({{ lang.code }})
+              </button>
+            </div>
+          </div>
+
+          <button
+            class="btn btn--ghost btn--util"
+            type="button"
+            @click="handleShare"
+            :aria-label="currentTranslations.share"
+          >
+            <span class="btn--util__icon" aria-hidden="true">↷</span>
+          </button>
+
+          <button
+            class="btn btn--ghost btn--util"
+            type="button"
+            @click="openHelpModal"
+            :aria-label="currentTranslations.help"
+          >
+            <span class="btn--util__text" data-i18n="help">Help</span>
+          </button>
+        </div>
+
+        <div class="theme-toggle">
+          <button
+            class="btn btn--ghost"
+            type="button"
+            @click="toggleTheme"
+            :aria-pressed="theme === 'light'"
+          >
+            <span class="theme-toggle__icon" aria-hidden="true">☀︎</span>
+            <span class="theme-toggle__label">
+              {{ theme === 'dark' ? currentTranslations.lightMode : currentTranslations.darkMode }}
+            </span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div
+      v-if="showShareModal"
+      class="modal-overlay"
+      @click="closeShareModal"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="'share-modal-title'"
+    >
+      <div class="modal" @click.stop>
+        <div class="modal__header">
+          <h3 id="share-modal-title" class="modal__title" data-i18n="shareModalTitle">Share</h3>
+          <button
+            class="modal__close"
+            type="button"
+            @click="closeShareModal"
+            :aria-label="currentTranslations.closeShareModal"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="modal__body">
+          <div class="share-url-field">
+            <label class="form__field">
+              <span class="form__label" data-i18n="share">Share</span>
+              <input
+                class="form__control"
+                type="text"
+                :value="currentUrl"
+                readonly
+                id="share-url-input"
+              />
+            </label>
+          </div>
+          <div class="share-options">
+            <a
+              :href="shareLinks.twitter"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="share-options__item"
+            >
+              <span class="share-options__icon">🐦</span>
+              <span class="share-options__label" data-i18n="twitter">Twitter/X</span>
+            </a>
+            <a
+              :href="shareLinks.facebook"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="share-options__item"
+            >
+              <span class="share-options__icon">📘</span>
+              <span class="share-options__label" data-i18n="facebook">Facebook</span>
+            </a>
+            <a
+              :href="shareLinks.linkedin"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="share-options__item"
+            >
+              <span class="share-options__icon">💼</span>
+              <span class="share-options__label" data-i18n="linkedin">LinkedIn</span>
+            </a>
+            <button
+              class="share-options__item"
+              type="button"
+              @click="copyShareLink"
+            >
+              <span class="share-options__icon">🔗</span>
+              <span class="share-options__label" data-i18n="copyLink">Copy Link</span>
+            </button>
+          </div>
+          <p v-if="shareCopyMessage" class="share-options__message">
+            {{ shareCopyMessage }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div
+      v-if="showHelpModal"
+      class="modal-overlay"
+      @click="closeHelpModal"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="'help-modal-title'"
+    >
+      <div class="modal modal--help" @click.stop>
+        <div class="modal__header">
+          <h3 id="help-modal-title" class="modal__title" data-i18n="helpModalTitle">Help & Support</h3>
+          <button
+            class="modal__close"
+            type="button"
+            @click="closeHelpModal"
+            :aria-label="currentTranslations.closeHelpModal"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="modal__body">
+          <div class="help-content">
+            <div class="help-faq">
+              <h4 class="help-faq__question" data-i18n="faqQ1">How do I calculate royalty splits?</h4>
+              <p class="help-faq__answer" data-i18n="faqA1">Enter your total royalty amount and add collaborators with their percentage splits. Ensure the total percentages equal 100%, then click "Calculate split" to see the results.</p>
+            </div>
+            <div class="help-faq">
+              <h4 class="help-faq__question" data-i18n="faqQ2">Can I add or remove collaborators?</h4>
+              <p class="help-faq__answer" data-i18n="faqA2">Yes! Click the "+ Add collaborator" button to add more collaborators. Use the "✕" button to remove a collaborator. You must have at least one collaborator.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <main class="layout">
+      <section class="panel panel--input" aria-labelledby="input-title">
+        <div class="panel__header">
+          <h2 id="input-title" class="panel__title" data-i18n="projectSetup">Project setup</h2>
+          <p class="panel__subtitle" data-i18n="projectSetupSubtitle">Enter project details and collaborators.</p>
+        </div>
+
+        <form class="form" @submit.prevent>
+          <label class="form__field">
+            <span class="form__label" data-i18n="projectTitle">Project title</span>
+            <input
+              class="form__control"
+              type="text"
+              name="projectTitle"
+              data-i18n="projectTitlePlaceholder"
+              placeholder="Debut Single: Echoes"
+              v-model.trim="projectTitle"
+            />
+          </label>
+
+          <label class="form__field">
+            <span class="form__label" data-i18n="totalRoyalty">Total royalty amount</span>
+            <input
+              class="form__control"
+              type="number"
+              name="totalRoyalty"
+              min="0"
+              step="0.01"
+              data-i18n="totalRoyaltyPlaceholder"
+              placeholder="10000"
+              v-model.number="totalRoyalty"
+            />
+          </label>
+
+          <div class="form__group">
+            <div class="form__group-header">
+              <h3 class="form__group-title" data-i18n="collaborators">Collaborators</h3>
+              <button
+                class="btn btn--secondary"
+                type="button"
+                @click="addCollaborator"
+              >
+                <span data-i18n="addCollaborator">+ Add collaborator</span>
+              </button>
+            </div>
+
+            <ul class="collab-list">
+              <li
+                class="collab-list__item"
+                v-for="(collab, index) in collaborators"
+                :key="collab.id"
+              >
+                <label class="form__field collab-list__field">
+                  <span class="form__label" data-i18n="name">Name</span>
+                  <input
+                    class="form__control"
+                    type="text"
+                    :name="`collaborator-${index}-name`"
+                    data-i18n="namePlaceholder"
+                    placeholder="Collaborator name"
+                    v-model.trim="collab.name"
+                  />
+                </label>
+
+                <label class="form__field collab-list__field">
+                  <span class="form__label" data-i18n="split">Split (%)</span>
+                  <input
+                    class="form__control"
+                    type="number"
+                    :name="`collaborator-${index}-split`"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    data-i18n="splitPlaceholder"
+                    placeholder="25"
+                    v-model.number="collab.percentage"
+                  />
+                </label>
+
+                <button
+                  class="btn btn--ghost collab-list__remove"
+                  type="button"
+                  @click="removeCollaborator(index)"
+                  :aria-label="`${currentTranslations.name}: ${collab.name || currentTranslations.unnamedCollaborator}`"
+                  :disabled="collaborators.length === 1"
+                >
+                  ✕
+                </button>
+              </li>
+            </ul>
+
+            <p
+              class="form__helper"
+              :class="{
+                'form__helper--error': !isPercentageComplete,
+                'form__helper--success': isPercentageComplete
+              }"
+              role="status"
+            >
+              {{ percentageTotal.toFixed(2) }}% <span data-i18n="allocated">allocated</span> /
+              <span v-if="isPercentageComplete" data-i18n="readyToCalculate">Ready to calculate</span>
+              <span v-else data-i18n="mustEqual100">Must equal 100%</span>
+            </p>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel panel--output" aria-labelledby="output-title">
+        <div class="panel__header">
+          <h2 id="output-title" class="panel__title" data-i18n="results">Results</h2>
+          <p class="panel__subtitle" data-i18n="resultsSubtitle">
+            Run the calculation once percentages equal 100%.
+          </p>
+        </div>
+
+        <div class="panel__actions">
+          <button
+            class="btn btn--primary"
+            type="button"
+            @click="calculateSplit"
+            :disabled="!canCalculate"
+          >
+            <span data-i18n="calculateSplit">Calculate split</span>
+          </button>
+          <button
+            class="btn btn--ghost"
+            type="button"
+            @click="resetForm"
+            :disabled="isPristine"
+          >
+            <span data-i18n="resetForm">Reset form</span>
+          </button>
+        </div>
+
+        <div v-if="results.length" class="results" aria-live="polite">
+          <table class="results__table">
+            <thead>
+              <tr>
+                <th scope="col" data-i18n="collaborator">Collaborator</th>
+                <th scope="col" data-i18n="split">Split (%)</th>
+                <th scope="col" data-i18n="royaltyShare">Royalty share</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="row in results" :key="row.id">
+                <td>{{ row.name || currentTranslations.unnamedCollaborator }}</td>
+                <td>{{ row.percentage.toFixed(2) }}%</td>
+                <td>{{ formatCurrency(row.amount) }}</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td data-i18n="total">Total</td>
+                <td>100%</td>
+                <td>{{ formatCurrency(totalRoyalty || 0) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+
+          <div class="results__actions">
+            <button
+              class="btn btn--secondary"
+              type="button"
+              @click="copyResults"
+            >
+              <span data-i18n="copyResults">Copy results</span>
+            </button>
+          </div>
+          <p v-if="copyMessage" class="results__notice">
+            {{ copyMessage }}
+          </p>
+
+          <p class="results__summary">
+            {{ summaryText }}
+          </p>
+        </div>
+        <p v-else class="results__empty" data-i18n="resultsEmpty">
+          Results will appear here after a successful calculation.
+        </p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer__logo">
+        <h2 class="footer__logo-text" data-i18n="footerLogo">RoyaltySplitter</h2>
+      </div>
+      
+      <div class="footer__columns">
+        <div class="footer__column">
+          <h3 class="footer__column-title" data-i18n="footerCompany">Company</h3>
+          <a href="#help" class="footer__link" @click.prevent="openHelpModal" data-i18n="help">Help</a>
+          <a href="#share" class="footer__link" @click.prevent="handleShare" data-i18n="share">Share</a>
+          <a href="#blog" class="footer__link" data-i18n="footerBlog">Blog</a>
+          <a href="#about" class="footer__link" data-i18n="footerAbout">About</a>
+          <a href="#press" class="footer__link" data-i18n="footerPress">Press Kit</a>
+        </div>
+        
+        <div class="footer__column">
+          <h3 class="footer__column-title" data-i18n="footerUseCases">Use Cases</h3>
+          <a href="#music" class="footer__link" data-i18n="footerMusic">Music</a>
+          <a href="#podcast" class="footer__link" data-i18n="footerPodcast">Podcast</a>
+          <a href="#film" class="footer__link" data-i18n="footerFilm">Film</a>
+          <a href="#app" class="footer__link" data-i18n="footerApp">App</a>
+          <a href="#other" class="footer__link" data-i18n="footerOther">Other</a>
+        </div>
+        
+        <div class="footer__column">
+          <h3 class="footer__column-title" data-i18n="footerLanguage">Language</h3>
+          <a href="#" class="footer__link" @click.prevent="selectLanguage('EN')" data-i18n="langEnglish">English</a>
+          <a href="#" class="footer__link" @click.prevent="selectLanguage('ES')" data-i18n="langSpanish">Español</a>
+          <a href="#" class="footer__link" @click.prevent="selectLanguage('FR')" data-i18n="langFrench">Français</a>
+        </div>
+        
+        <div class="footer__column">
+          <h3 class="footer__column-title" data-i18n="footerLegal">Legal & Apps</h3>
+          <a href="#imprint" class="footer__link" data-i18n="footerImprint">Imprint</a>
+          <a href="#privacy" class="footer__link" data-i18n="footerPrivacy">Privacy Policy</a>
+          <a href="#mobile" class="footer__link" data-i18n="footerMobile">Mobile Apps</a>
+        </div>
+      </div>
+      
+      <div class="footer__apps">
+        <a href="#appstore" class="footer__app-link" data-i18n="footerAppStore">📱 App Store</a>
+        <a href="#playstore" class="footer__app-link" data-i18n="footerPlayStore">🤖 Google Play</a>
+      </div>
+      
+      <div class="footer__bottom">
+        <p class="footer__copyright" data-i18n="footerCopyright">© 2025 RoyaltySplitter.</p>
+        <div class="footer__social">
+          <a href="#twitter" class="footer__social-link" aria-label="Twitter" title="Twitter">🐦</a>
+          <a href="#facebook" class="footer__social-link" aria-label="Facebook" title="Facebook">📘</a>
+          <a href="#instagram" class="footer__social-link" aria-label="Instagram" title="Instagram">📷</a>
+          <a href="#youtube" class="footer__social-link" aria-label="YouTube" title="YouTube">▶️</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
